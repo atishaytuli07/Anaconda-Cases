@@ -41,6 +41,6 @@ export function constructMetadata({
       images: [image],
     },
     icons,
-    metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL + '/callback')
+    metadataBase: new URL("https://anacondacase.vercel.app/")
   }
 }
