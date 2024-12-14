@@ -26,7 +26,7 @@ const OrderReceivedEmail = ({
   const baseUrl =
     process.env.NODE_ENV === 'development'
       ? 'http://localhost:3000'
-      : 'https://casecobra.vercel.app'
+      : ''
 
   return (
     <Html>
@@ -42,10 +42,10 @@ const OrderReceivedEmail = ({
               alt='delivery snake'
               style={{ margin: 'auto' }}
             />
-            <Heading style={global.heading}>Thank you for your order!</Heading>
+            <Heading style={global.heading}>Thank you for your order !!</Heading>
             <Text style={global.text}>
               We're preparing everything for delivery and will notify you once
-              your package has been shipped. Delivery usually takes 2 days.
+              your package has been shipped. Delivery usually takes 2-5 working days.
             </Text>
             <Text style={{ ...global.text, marginTop: 24 }}>
               If you have any questions regarding your order, please feel free

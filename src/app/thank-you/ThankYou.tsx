@@ -18,7 +18,7 @@ const ThankYou = () => {
     retryDelay: 500,
   })
 
-  if (data === undefined) {
+  if (!data) {
     return (
       <div className='w-full mt-24 flex justify-center'>
         <div className='flex flex-col items-center gap-2'>
@@ -27,10 +27,10 @@ const ThankYou = () => {
           <p>Hang tight! We’re on it.</p>
         </div>
       </div>
-    )
+    );
   }
-
-  if (data === false) {
+  
+  if (!data.isPaid) {
     return (
       <div className='w-full mt-24 flex justify-center'>
         <div className='flex flex-col items-center gap-2'>
@@ -39,8 +39,9 @@ const ThankYou = () => {
           <p>Please hold on, this won't take much time.</p>
         </div>
       </div>
-    )
+    );
   }
+  
 
   const { configuration, billingAddress, shippingAddress, amount } = data
   const { color } = configuration

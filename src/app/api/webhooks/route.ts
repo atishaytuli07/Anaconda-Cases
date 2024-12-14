@@ -62,7 +62,6 @@ export async function POST(req: Request) {
 
       console.log('Order Details:', mockOrder);
 
-      // Simulate sending a confirmation message
       console.log('Sending confirmation email to:', session.customer_details.email);
     }
 

@@ -37,7 +37,12 @@ enum CaseColor {
   black
   blue
   rose
+  red
+  green
+  purple
+  yellow
 }
+
 
 model Configuration {
   id              String        @id @default(cuid())

@@ -4,12 +4,11 @@ import { db } from '@/db'
 import { getKindeServerSession } from '@kinde-oss/kinde-auth-nextjs/server'
 
 export const getPaymentStatus = async ({ orderId }: { orderId: string }) => {
-  // Simulate demo mode for testing purposes
   const isDemo = true; // Toggle this for production vs demo
 
   if (isDemo) {
-    // In demo mode, simulate a successful payment without checking user session
-    const order = await db.order.findFirst({
+    // In demo mode, fetch or create a dummy order for testing
+    let order = await db.order.findFirst({
       where: { id: orderId },
       include: {
         billingAddress: true,
@@ -20,30 +19,50 @@ export const getPaymentStatus = async ({ orderId }: { orderId: string }) => {
     });
 
     if (!order) {
-      // If the order does not exist, create a dummy one for testing
-      const dummyOrder = await db.order.create({
-        data: {
-          id: orderId,
-          userId: "demo-user", // Dummy user ID
-          amount: 100, // Dummy amount
-          isPaid: true, // Mark it as paid for demo
-          configurationId: "demo-config-id", // Reference the created configuration
+      // Create a dummy configuration if not found
+      const dummyConfig = await db.configuration.upsert({
+        where: { id: "demo-config-id" },
+        update: {},
+        create: {
+          id: "demo-config-id",
+          width: 200,
+          height: 300,
+          imageUrl: "https://via.placeholder.com/150",
+          color: "black",
+          model: "iphone12",
+          material: "silicone",
+          finish: "smooth",
         },
       });
-      return dummyOrder;
-    }    
-    
 
-    // Update the order to mark it as paid (for demo purposes)
+      // Create a dummy order if not found
+      order = await db.order.create({
+        data: {
+          id: orderId,
+          userId: "demo-user",
+          amount: 100, // Dummy amount
+          isPaid: true, // Mark as paid for demo
+          configurationId: dummyConfig.id,
+        },
+        include: {
+          billingAddress: true,
+          configuration: true,
+          shippingAddress: true,
+          user: true,
+        },
+      });
+    }
+
     if (!order.isPaid) {
+      // Mark the order as paid (for demo purposes)
       await db.order.update({
         where: { id: orderId },
         data: { isPaid: true },
       });
-      return { ...order, isPaid: true };
+      order.isPaid = true;
     }
 
-    return order; // Return the order as is if already paid
+    return order;
   }
 
   // Production logic
@@ -54,7 +73,6 @@ export const getPaymentStatus = async ({ orderId }: { orderId: string }) => {
     throw new Error('You need to be logged in to view this page.');
   }
 
-  // Find the order based on orderId and userId
   const order = await db.order.findFirst({
     where: { id: orderId, userId: user.id },
     include: {
@@ -69,14 +87,12 @@ export const getPaymentStatus = async ({ orderId }: { orderId: string }) => {
     throw new Error('This order does not exist.');
   }
 
-  // Simulate marking the order as paid for production purposes
   if (!order.isPaid) {
     await db.order.update({
       where: { id: orderId },
       data: { isPaid: true },
     });
-
-    return { ...order, isPaid: true };
+    order.isPaid = true;
   }
 
   return order;
