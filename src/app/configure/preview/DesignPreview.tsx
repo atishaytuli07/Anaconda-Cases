@@ -24,9 +24,18 @@ const DesignPreview = ({ configuration }: { configuration: Configuration }) => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false)
 
   const [showConfetti, setShowConfetti] = useState<boolean>(false)
+ 
   useEffect(() => {
-    setShowConfetti(true);
-  }, []);
+    // Check if user just logged in and there's a pending checkout
+    if (user && isLoginModalOpen) {
+      const pendingConfigId = localStorage.getItem('configurationId')
+      if (pendingConfigId) {
+        createPaymentSession({ configId: pendingConfigId })
+        localStorage.removeItem('configurationId')
+        setIsLoginModalOpen(false)
+      }
+    }
+  }, [user, isLoginModalOpen])
   
 
   const { color, model, finish, material } = configuration
