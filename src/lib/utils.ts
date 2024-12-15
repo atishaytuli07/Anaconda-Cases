@@ -41,6 +41,6 @@ export function constructMetadata({
       images: [image],
     },
     icons,
-    metadataBase: new URL("https://anacondacase.vercel.app")
+    metadataBase: new URL("https://anacondacases.vercel.app")
   }
 }
