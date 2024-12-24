@@ -29,11 +29,17 @@ export const createCheckoutSession = async ({ configId }: { configId: string }) 
       });
     }
 
-    // Get user session
-    const { getUser } = getKindeServerSession();
-    const user = await getUser();
-
-    if (!user || !user.id) {
+    // Get user session with error handling
+    let user;
+    try {
+      const session = await getKindeServerSession();
+      user = await session.getUser();
+      
+      if (!user?.id) {
+        throw new Error("You need to be logged in");
+      }
+    } catch (error) {
+      console.error("Authentication error:", error);
       throw new Error("You need to be logged in");
     }
 

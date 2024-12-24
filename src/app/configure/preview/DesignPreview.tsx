@@ -20,22 +20,25 @@ const DesignPreview = ({ configuration }: { configuration: Configuration }) => {
   const router = useRouter()
   const { toast } = useToast()
   const { id } = configuration
-  const { user, isLoading } = useKindeBrowserClient()
+  const { user, isAuthenticated, isLoading } = useKindeBrowserClient()
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false)
 
   const [showConfetti, setShowConfetti] = useState<boolean>(false)
  
   useEffect(() => {
     // Check if user just logged in and there's a pending checkout
-    if (user && isLoginModalOpen) {
+    if (isAuthenticated && isLoginModalOpen) {
       const pendingConfigId = localStorage.getItem('configurationId')
       if (pendingConfigId) {
-        createPaymentSession({ configId: pendingConfigId })
-        localStorage.removeItem('configurationId')
-        setIsLoginModalOpen(false)
+        // Add delay to ensure auth state is fully synced
+        setTimeout(() => {
+          createPaymentSession({ configId: pendingConfigId })
+          localStorage.removeItem('configurationId')
+          setIsLoginModalOpen(false)
+        }, 1000)
       }
     }
-  }, [user, isLoginModalOpen])
+  }, [isAuthenticated, isLoginModalOpen])
   
 
   const { color, model, finish, material } = configuration
@@ -81,10 +84,12 @@ const DesignPreview = ({ configuration }: { configuration: Configuration }) => {
         setIsLoginModalOpen(true)
       } else {
         toast({
-          title: 'Something went wrong',
-          description: 'There was an error creating your checkout session. Please try again.',
+          title: 'Authentication Error',
+          description: 'Please try logging in again.',
           variant: 'destructive',
         })
+        // Force re-authentication
+        router.push('/api/auth/login')
       }
     },
   })
@@ -93,11 +98,22 @@ const DesignPreview = ({ configuration }: { configuration: Configuration }) => {
     // Wait for auth state to be determined
     if (isLoading) return
 
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      localStorage.setItem('configurationId', id)
+      setIsLoginModalOpen(true)
+      return
+    }
+
     try {
-      // Always try to create payment session first
-      await createPaymentSession({ configId: id })
+      // Add delay before creating payment session
+      setTimeout(async () => {
+        await createPaymentSession({ configId: id })
+      }, 1000)
     } catch (error) {
       console.error('Checkout error:', error)
+      // Force re-authentication on error
+      router.push('/api/auth/login')
     }
   }
 

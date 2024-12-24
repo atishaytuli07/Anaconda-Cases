@@ -16,18 +16,27 @@ const Page = async ({ searchParams }: PageProps) => {
     return notFound()
   }
 
+  // Initialize Kinde session but don't force authentication
   const { getUser } = getKindeServerSession()
-  const user = await getUser()
+  let user = null
 
-  if (user?.id) {
-    await db.user.upsert({
-      where: { id: user.id },
-      create: {
-        id: user.id,
-        email: user.email ?? ''
-      },
-      update: {}
-    })
+  try {
+    user = await getUser()
+    
+    // Only try to upsert user if we have valid user data
+    if (user?.id && user?.email) {
+      await db.user.upsert({
+        where: { id: user.id },
+        create: {
+          id: user.id,
+          email: user.email
+        },
+        update: {}
+      })
+    }
+  } catch (error) {
+    // Just log auth errors but don't redirect
+    console.error('Auth error:', error)
   }
 
   let configuration = await db.configuration.findUnique({
