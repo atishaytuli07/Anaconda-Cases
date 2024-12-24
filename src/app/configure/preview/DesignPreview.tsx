@@ -53,32 +53,52 @@ const DesignPreview = ({ configuration }: { configuration: Configuration }) => {
 
   const { mutate: createPaymentSession } = useMutation({
     mutationKey: ['get-checkout-session'],
-    mutationFn: createCheckoutSession,
+    mutationFn: async ({ configId }: { configId: string }) => {
+      try {
+        const response = await createCheckoutSession({ configId })
+        if (!response) {
+          throw new Error('No response from checkout session')
+        }
+        return response
+      } catch (error) {
+        if (error instanceof Error && error.message === "You need to be logged in") {
+          throw error
+        }
+        console.error('Checkout session error:', error)
+        throw new Error('Failed to create checkout session')
+      }
+    },
     onSuccess: ({ url }) => {
-      if (url) router.push(url)
-      else throw new Error('Unable to retrieve payment URL.')
+      if (url) {
+        router.push(url)
+      } else {
+        throw new Error('Unable to retrieve payment URL.')
+      }
     },
     onError: (error) => {
-      // Check if error is due to auth
       if (error instanceof Error && error.message === "You need to be logged in") {
         localStorage.setItem('configurationId', id)
         setIsLoginModalOpen(true)
       } else {
         toast({
           title: 'Something went wrong',
-          description: 'There was an error on our end. Please try again.',
+          description: 'There was an error creating your checkout session. Please try again.',
           variant: 'destructive',
         })
       }
     },
   })
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     // Wait for auth state to be determined
     if (isLoading) return
 
-    // Always try to create payment session first
-    createPaymentSession({ configId: id })
+    try {
+      // Always try to create payment session first
+      await createPaymentSession({ configId: id })
+    } catch (error) {
+      console.error('Checkout error:', error)
+    }
   }
 
   return (
@@ -174,7 +194,7 @@ const DesignPreview = ({ configuration }: { configuration: Configuration }) => {
             <div className='mt-8 flex justify-end pb-12'>
               <Button
                 onClick={handleCheckout}
-                disabled={isLoading ?? false}
+                disabled={!!isLoading}
                 className='px-4 sm:px-6 lg:px-8'>
                 Check out <ArrowRight className='h-4 w-4 ml-1.5 inline' />
               </Button>

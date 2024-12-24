@@ -7,6 +7,7 @@ import { getKindeServerSession } from '@kinde-oss/kinde-auth-nextjs/server'
 import { Order, Configuration } from '@prisma/client'
 
 export const createCheckoutSession = async ({ configId }: { configId: string }) => {
+  try {
     let configuration: Configuration | null = await db.configuration.findUnique({
       where: { id: configId },
     });
@@ -16,7 +17,7 @@ export const createCheckoutSession = async ({ configId }: { configId: string }) 
         where: { id: "demo-config-id" },
         update: {},
         create: {
-          id: "demo-config-id",
+          id: "demo-config-id", 
           width: 200,
           height: 300,
           imageUrl: "https://via.placeholder.com/150",
@@ -27,39 +28,39 @@ export const createCheckoutSession = async ({ configId }: { configId: string }) 
         },
       });
     }
-  
+
     // Get user session
     const { getUser } = getKindeServerSession();
     const user = await getUser();
-  
-    if (!user) {
+
+    if (!user || !user.id) {
       throw new Error("You need to be logged in");
     }
-  
+
     let existingUser = await db.user.findUnique({
       where: { id: user.id },
     });
-  
+
     if (!existingUser) {
       existingUser = await db.user.create({
         data: {
           id: user.id,
-          email: user.email ?? '', // Handle null email
+          email: user.email ?? '',
         },
       });
     }
-  
+
     // Calculate price
     const { finish, material } = configuration;
     let price = BASE_PRICE;
     if (finish === "textured") price += PRODUCT_PRICES.finish.textured;
     if (material === "polycarbonate") price += PRODUCT_PRICES.material.polycarbonate;
-  
+
     // Find or create order
     let order = await db.order.findFirst({
       where: { userId: user.id, configurationId: configuration.id },
     });
-  
+
     if (!order) {
       order = await db.order.create({
         data: {
@@ -69,19 +70,15 @@ export const createCheckoutSession = async ({ configId }: { configId: string }) 
         },
       });
     }
-  
+
     // Validate environment variables
-    const successUrl = process.env.NEXT_PUBLIC_SERVER_URL
-      ? `${process.env.NEXT_PUBLIC_SERVER_URL}/thank-you?orderId=${order.id}`
-      : null;
-    const cancelUrl = process.env.NEXT_PUBLIC_SERVER_URL
-      ? `${process.env.NEXT_PUBLIC_SERVER_URL}/configure/preview?id=${configuration.id}`
-      : null;
-  
-    if (!successUrl || !cancelUrl) {
-      throw new Error("Missing NEXT_PUBLIC_SERVER_URL environment variable.");
+    if (!process.env.NEXT_PUBLIC_SERVER_URL) {
+      throw new Error("Missing NEXT_PUBLIC_SERVER_URL environment variable");
     }
-  
+
+    const successUrl = `${process.env.NEXT_PUBLIC_SERVER_URL}/thank-you?orderId=${order.id}`;
+    const cancelUrl = `${process.env.NEXT_PUBLIC_SERVER_URL}/configure/preview?id=${configuration.id}`;
+
     // Create product in Stripe
     const product = await stripe.products.create({
       name: "Custom iPhone Case",
@@ -91,12 +88,11 @@ export const createCheckoutSession = async ({ configId }: { configId: string }) 
         unit_amount: price,
       },
     });
-  
-    // Validate Stripe price and product
+
     if (!product.default_price) {
-      throw new Error("Failed to create default price for the product.");
+      throw new Error("Failed to create default price for the product");
     }
-  
+
     // Create Stripe checkout session
     const stripeSession = await stripe.checkout.sessions.create({
       success_url: successUrl,
@@ -108,9 +104,17 @@ export const createCheckoutSession = async ({ configId }: { configId: string }) 
         userId: user.id,
         orderId: order.id,
       },
-      line_items: [{ price: product.default_price as string, quantity: 1 }], // Ensure `price` is a string
+      line_items: [{ price: product.default_price as string, quantity: 1 }],
     });
-  
+
+    if (!stripeSession.url) {
+      throw new Error("Failed to create checkout session URL");
+    }
+
     return { url: stripeSession.url };
-  };
-  
+
+  } catch (error) {
+    console.error("Checkout session error:", error);
+    throw error;
+  }
+};
